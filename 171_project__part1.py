@@ -10,6 +10,19 @@ def draw_graph(canvas, nodes, edges, node_radius=20):
         canvas.create_oval(x - node_radius, y - node_radius, x + node_radius, y + node_radius, fill="honeydew", outline="black", tags=f"node_{node_id}")
         canvas.create_text(x, y, text=str(node_id), font=("Arial", 14), tags=f"label_{node_id}")
 
+DFSCode = """
+    function DEPTH-LIMITED-SEARCH(problem, l):
+    while not IS-EMPTY(frontier) do
+        node ← POP(frontier)
+        if problem.IS-GOAL(node.STATE) then return node
+        if DEPTH(node) > l then
+            result ← cutoff
+        else if not IS-CYCLE(node) do
+            for each child in EXPAND(problem, node) do
+                add child to frontier
+    return result
+"""
+
 # ----------- Home Button Class ------------
 class HomeButtonMixin:
     def add_home_button(self, master):
@@ -99,7 +112,37 @@ class PracticeProblemTreePage(tk.Frame, HomeButtonMixin):
         tk.Button(button_frame, text="← Back", command=self.prev_step).pack(side="left", padx=10)
         tk.Button(button_frame, text="→ Next", command=self.next_step).pack(side="left", padx=10)
         tk.Button(self, text="Try on your own!", command=lambda: master.switch_frame(DFSPage)).pack(pady=10)
+        self.code_text = tk.Text(self, wrap=tk.WORD, width=50, height=15, font=("Courier New", 10))
+        self.code_text.pack(side=tk.RIGHT, padx=50)
+        self.code_text.insert(tk.END, DFSCode)
+        self.code_text.config(state=tk.DISABLED)
 
+        self.step_to_code_line = {
+            0: [2,3],
+            1: [4],
+            2: [5,6],
+            3: [7],
+            4: [6,7],
+            5: [8,9,10],
+            6: [5,6,7],
+            7: [5,6,7],
+            8: [11]
+}
+    
+
+
+    def highlight_code_line(self, line_num):
+        self.code_text.config(state=tk.NORMAL)
+        self.code_text.tag_remove("highlight", "1.0", tk.END)
+    
+        for line_num in line_num:
+            if line_num >= 1:
+                self.code_text.tag_add("highlight", f"{line_num}.0", f"{line_num}.end")
+    
+        self.code_text.tag_config("highlight", background="yellow")
+        self.code_text.config(state=tk.DISABLED)
+    
+    
     def highlight_node(self, node_id, fill_color="lightgreen", outline_color="black"):
         self.canvas.itemconfig(f"node_{node_id}", fill=fill_color, outline=outline_color)
 
@@ -114,9 +157,13 @@ class PracticeProblemTreePage(tk.Frame, HomeButtonMixin):
             step = self.steps[self.current_step]
             self.text_label.config(text=step["text"])
             self.highlight_node(step["node"], step["fill"], step["outline"])
+            self.highlight_code_line(self.step_to_code_line[self.current_step])
     
     def prev_step(self):
         if self.current_step >= 0:
+            self.code_text.config(state=tk.NORMAL)
+            self.code_text.tag_remove("highlight", "1.0", tk.END)
+            self.code_text.config(state=tk.DISABLED)
             prev_node = self.steps[self.current_step]["node"]
             self.highlight_node(prev_node, "honeydew", "black")
             self.current_step -= 1
