@@ -1,7 +1,3 @@
-**Bug Fixes & Code Cleanup:**  
-  - Fixed missing code variable errors.
-  - Improved code structure and comments for maintainability.
-
 ## **How to Run**
 
 1. have Python installed.
@@ -27,12 +23,16 @@
 - **Try On Your Own:**  
   Click nodes to run DFS interactively and see the algorithm in action.
 
----
+**Bug Fixes & Code Cleanup:**  
+  - Fixed missing code variable errors.
+  - Improved code structure and comments for maintainability.
+
 
 ## 🛠️ **Contributors**
 
-- Samir Pandit (`ybnsamir@outlook.com`)
-- [Add other contributors here]
+- (https://github.com/suhmir)
+- (https://github.com/SheaAnastasiaThomopoulos)
+- (https://github.com/billauci)
 
 ---
 
