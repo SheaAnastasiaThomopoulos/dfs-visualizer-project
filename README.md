@@ -28,7 +28,7 @@
   - Improved code structure and comments for maintainability.
 
 
-## 🛠️ **Contributors**
+##**Contributors**
 
 - (https://github.com/suhmir)
 - (https://github.com/SheaAnastasiaThomopoulos)
@@ -36,7 +36,7 @@
 
 ---
 
-## 📸 **Screenshots & Walkthrough**
+##**Screenshots & Walkthrough**
 <img width="889" height="662" alt="image" src="https://github.com/user-attachments/assets/2ed560d5-1ea5-4b5e-8804-7bc82e5eeaa2" />
 <img width="893" height="673" alt="image" src="https://github.com/user-attachments/assets/67ae8f8c-cba0-4ca0-ac47-170c541c9e25" />
 <img width="1919" height="1023" alt="image" src="https://github.com/user-attachments/assets/2037eadd-a410-4670-a5d7-dcfb52f4696c" />
