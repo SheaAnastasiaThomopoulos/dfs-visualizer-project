@@ -1,4 +1,5 @@
 import tkinter as tk
+import random 
 
 #added colors for the UI, better readability 
 PRIMARY_BG = "#f5f7fa"
@@ -370,45 +371,171 @@ class DFSPage(tk.Frame, HomeButtonMixin):
     def __init__(self, master):
         super().__init__(master, bg=PRIMARY_BG)
         self.add_home_button(master)
-        self.tracker = TrackerPanel(self, title="Run State")
+
+        header = tk.Frame(self, bg=PRIMARY_BG)
+        header.pack(fill="x", padx=10, pady=(10, 0))
+        tk.Label(header, text="DFS Game: Pick nodes in DFS order", font=("Arial", 16, "bold"), bg=PRIMARY_BG, fg=NODE_OUTLINE).pack(side="left")
+        self.score_label = tk.Label(header, text="Rounds cleared: 0", font=("Arial", 12), bg=PRIMARY_BG, fg=NODE_OUTLINE)
+        self.score_label.pack(side="right")
+
+        # Feedback / instructions
+        self.feedback = tk.Label(self, text="", font=("Arial", 13), bg=PRIMARY_BG, fg=NODE_OUTLINE, wraplength=780, justify="left")
+        self.feedback.pack(pady=(6, 8))
+
+        self.tracker = TrackerPanel(self, title="Your Progress")
         self.tracker.pack(side=tk.RIGHT, fill=tk.Y, padx=10, pady=10)
-        tk.Label(self, text="Click on a node to perform DFS", font=("Arial", 15, "bold"), bg=PRIMARY_BG, fg=NODE_OUTLINE).pack()
         self.canvas = tk.Canvas(self, width=800, height=500, bg=ACCENT_BG, bd=0, highlightthickness=0)
-        self.canvas.pack()
-        self.graph = self.create_graph()
-        self.draw_graph()
-        self.stack = []
-        self.visited_order = []
+        self.canvas.pack(padx=10, pady=4)
+        self.graph = {} 
+        self.edges = [] 
+        self.expected_order = []
+        self.current_index = 0 
+        self.rounds_cleared = 0
         self.canvas.bind("<Button-1>", self.on_click)
-        tk.Button(self, text="Back", command=lambda: master.switch_frame(StartPage),
-                  font=("Arial", 12, "bold"), bg=BUTTON_BG, fg=BUTTON_FG, activebackground=ACCENT_BG, activeforeground=NODE_OUTLINE, bd=0, padx=12, pady=6).pack(pady=10)
+        controls = tk.Frame(self, bg=PRIMARY_BG)
+        controls.pack(pady=8)
+        tk.Button(controls, text="New Graph", command=self.new_round,
+                  font=("Arial", 12, "bold"), bg=BUTTON_BG, fg=BUTTON_FG,
+                  activebackground=ACCENT_BG, activeforeground=NODE_OUTLINE,
+                  bd=0, padx=12, pady=6).pack(side="left", padx=6)
+        tk.Button(controls, text="Reveal Order", command=self.reveal_order,
+                  font=("Arial", 12, "bold"), bg=BUTTON_BG, fg=BUTTON_FG,
+                  activebackground=ACCENT_BG, activeforeground=NODE_OUTLINE,
+                  bd=0, padx=12, pady=6).pack(side="left", padx=6)
+        tk.Button(controls, text="Back", command=lambda: master.switch_frame(StartPage),
+                  font=("Arial", 12, "bold"), bg=BUTTON_BG, fg=BUTTON_FG,
+                  activebackground=ACCENT_BG, activeforeground=NODE_OUTLINE,
+                  bd=0, padx=12, pady=6).pack(side="left", padx=6)
+        self.new_round()
 
-    def create_graph(self):
-        return {
-            'A': GraphNode('A', 100, 100, ['B', 'C']),
-            'B': GraphNode('B', 250, 100, ['D']),
-            'C': GraphNode('C', 100, 250, []),
-            'D': GraphNode('D', 250, 250, [])
-        }
+    # ---------- Round lifecycle ----------
+    def new_round(self):
+        self.clear_canvas()
+        self.graph = self.generate_connected_graph()
+        self.edges = self.build_edge_list(self.graph)
+        self.draw_current_graph()
+        start = random.choice(list(self.graph.keys()))
+        self.expected_order = self.compute_dfs_order(start)
+        self.current_index = 0
+        self.tracker.set_visited([])
+        self.tracker.set_stack([]) 
+        self.feedback.config(text=f"Start at node {start}. Pick nodes in correct DFS order.\n" f"Tip: DFS uses a stack; we visit as deep as possible before backtracking.")
 
-    def draw_graph(self):
+    def next_round(self):
+        self.rounds_cleared += 1
+        self.score_label.config(text=f"Rounds cleared: {self.rounds_cleared}")
+        self.feedback.config(text="✅ Correct! Generating a new graph...")
+        self.after(800, self.new_round)
+
+    # ---------- Graph generation & drawing ----------
+    def generate_connected_graph(self):
+        n = random.randint(5, 7)
+        names = [chr(ord('A') + i) for i in range(n)]
+        # Place nodes on a loose grid
+        positions = self.random_positions(n)
+
+        # Start with a tree to ensure connectivity
+        adj = {name: set() for name in names}
+        for i in range(1, n):
+            u = names[i]
+            v = random.choice(names[:i])
+            adj[u].add(v)
+            adj[v].add(u)
+
+        # Add a few extra edges (avoid multi-edges/self-loops)
+        extra_edges = random.randint(1, max(1, n // 2))
+        attempted = 0
+        while extra_edges > 0 and attempted < 20:
+            u, v = random.sample(names, 2)
+            attempted += 1
+            if v not in adj[u]:
+                adj[u].add(v)
+                adj[v].add(u)
+                extra_edges -= 1
+
+        graph = {}
+        for name in names:
+            x, y = positions[name]
+            neighbors = sorted(list(adj[name]))
+            graph[name] = GraphNode(name, x, y, neighbors)
+            graph[name].visited = False
+        return graph
+
+    def random_positions(self, n):
+        # grid points within canvas bounds
+        cols, rows = 3, max(2, (n + 2) // 3)
+        xs = [120, 300, 480, 660][:cols]
+        ys = [110, 230, 350, 440][:rows]
+        spots = [(x, y) for y in ys for x in xs]
+        random.shuffle(spots)
+        names = [chr(ord('A') + i) for i in range(n)]
+        return {name: spots[i] for i, name in enumerate(names)}
+
+    def build_edge_list(self, graph):
+        edges = []
+        for u, node in graph.items():
+            for v in node.neighbors:
+                edges.append((u, v))
+        return edges
+
+    def draw_current_graph(self):
+        # Draw edges
+        for u, v in self.edges:
+            n1, n2 = self.graph[u], self.graph[v]
+            draw_directed_edge(self.canvas, n1.x, n1.y, n2.x, n2.y, 20, fill="#adb5bd")
+        # Draw nodes
         for node in self.graph.values():
-            for neighbor in node.neighbors:
-                n2 = self.graph[neighbor]
-                draw_directed_edge(self.canvas, node.x, node.y, n2.x, n2.y, 20, fill="#adb5bd")
-        for node in self.graph.values():
-            self.canvas.create_oval(node.x - 20, node.y - 20, node.x + 20, node.y + 20,
-                                    fill=NODE_COLOR, outline=NODE_OUTLINE, width=3, tags=node.name)
+            self.canvas.create_oval(node.x - 20, node.y - 20, node.x + 20, node.y + 20, fill=NODE_COLOR, outline=NODE_OUTLINE, width=3, tags=node.name)
             self.canvas.create_text(node.x, node.y, text=node.name, font=("Arial", 14, "bold"), fill=NODE_OUTLINE, tags=node.name)
 
+    def clear_canvas(self):
+        self.canvas.delete("all")
+
+    # ---------- DFS order (ground truth) ----------
+    def compute_dfs_order(self, start):
+        stack = [start]
+        visited = set()
+        order = []
+        while stack:
+            node = stack.pop()
+            if node in visited:
+                continue
+            visited.add(node)
+            order.append(node)
+            nbrs = list(self.graph[node].neighbors)
+            for nbr in reversed(nbrs):
+                if nbr not in visited:
+                    stack.append(nbr)
+        return order
+
+    # ---------- Interaction ----------
     def on_click(self, event):
-        clicked_node = self.get_node_at(event.x, event.y)
-        if clicked_node:
-            if not self.stack:
-                self.stack.append(clicked_node.name)
-                self.process_dfs()
-            else:
-                print("DFS is already running!")
+        clicked = self.get_node_at(event.x, event.y)
+        if not clicked:
+            return
+
+        # Already visited?
+        if clicked.visited:
+            self.flash_feedback(f"⚠️ {clicked.name} already visited. Next expected: {self.expected_order[self.current_index]}")
+            return
+
+        expected = self.expected_order[self.current_index]
+
+        if clicked.name != expected:
+            # Wrong pick — flash node and message
+            self.flash_node(clicked.name)
+            self.flash_feedback(f"❌ Not quite. Try node {expected} next.")
+            return
+
+        # Correct pick
+        clicked.visited = True
+        self.canvas.itemconfig(clicked.name, fill=NODE_VISITED)
+        visited_order = [n for n in self.expected_order[:self.current_index + 1]]
+        self.tracker.set_visited(visited_order)
+        self.current_index += 1
+
+        if self.current_index == len(self.expected_order):
+            self.next_round()
 
     def get_node_at(self, x, y):
         for node in self.graph.values():
@@ -416,31 +543,19 @@ class DFSPage(tk.Frame, HomeButtonMixin):
                 return node
         return None
 
-    def process_dfs(self):
-        if not self.stack:
-            print("DFS Complete!")
-            self.tracker.set_stack([])
-            return
+    # ---------- UX helpers ----------
+    def flash_node(self, tag_name):
+        self.canvas.itemconfig(tag_name, fill="#ffadad")
+        self.after(220, lambda: self.canvas.itemconfig(tag_name, fill=NODE_COLOR if not self.graph[tag_name].visited else NODE_VISITED))
 
-        node_name = self.stack.pop()
-        self.tracker.set_stack(self.stack)
-        node = self.graph[node_name]
-        if node.visited:
-            self.after(500, self.process_dfs)
-            return
+    def flash_feedback(self, msg):
+        self.feedback.config(text=msg)
+        orig = self.feedback.cget("bg")
+        self.feedback.config(bg="#fff3cd")
+        self.after(250, lambda: self.feedback.config(bg=PRIMARY_BG))
 
-        node.visited = True
-        self.visited_order.append(node_name)
-        self.tracker.set_visited(self.visited_order)
-        self.canvas.itemconfig(node.name, fill=NODE_VISITED)
-        print(f"Visited: {node_name}")
-
-        for neighbor in reversed(node.neighbors):
-            if not self.graph[neighbor].visited:
-                self.stack.append(neighbor)
-
-        self.tracker.set_stack(self.stack)
-        self.after(500, self.process_dfs)
+    def reveal_order(self):
+        self.feedback.config(text=f"True DFS order: {' → '.join(self.expected_order)}")
 
 if __name__ == "__main__":
     app = ProjectScreen()
